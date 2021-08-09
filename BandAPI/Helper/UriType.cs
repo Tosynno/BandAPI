@@ -8,6 +8,7 @@ namespace BandAPI.Helper
     public enum UriType
     {
         PreviousPage,
-        NextPage
+        NextPage, 
+        Current
     }
 }

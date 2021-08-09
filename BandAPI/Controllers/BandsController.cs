@@ -71,8 +71,30 @@ namespace BandAPI.Controllers
 
             Response.Headers.Add("Pagination", JsonSerializer.Serialize(metaData));
 
-            return Ok(_mapper.Map<IEnumerable<BandDto>>(bandsFromRepo)
-                .ShapeData(bandsResourceParameters.Fields));
+            var links = CreateLinksForBands(bandsResourceParameters, bandsFromRepo.HasNext, bandsFromRepo.HasPrevious);
+            var shapedBands = _mapper.Map<IEnumerable<BandDto>>(bandsFromRepo).ShapeData(bandsResourceParameters.Fields);
+
+
+            var shapedBandWithLinks = shapedBands.Select(band =>
+            {
+                var bandAsDictionary = band as IDictionary<string, object>;
+                var bandlinks = CreateLinkForBand((Guid)bandAsDictionary["Id"], null);
+                bandAsDictionary.Add("links", bandlinks);
+
+                return bandAsDictionary;
+            });
+
+            var linkedCollectionResource = new
+            {
+                value = shapedBandWithLinks,
+                links
+            };
+          
+
+            return Ok(linkedCollectionResource);
+
+           // return Ok(_mapper.Map<IEnumerable<BandDto>>(bandsFromRepo)
+              //  .ShapeData(bandsResourceParameters.Fields));
         }
 
         [HttpGet("{bandId}", Name = "GetBand")]
@@ -157,6 +179,8 @@ namespace BandAPI.Controllers
                         mainGenre = bandsResourceParameters.MainGenre,
                         searchQuery = bandsResourceParameters.SearchQuery
                     });
+
+                case UriType.Current:
                 default:
                     return Url.Link("GetBands", new
                     {
@@ -203,6 +227,34 @@ namespace BandAPI.Controllers
                 new LinkDto(Url.Link("GetAlbumsForBand", new { bandId }),
                 "albums",
                 "GET"));
+
+            return links;
+        }
+
+        private IEnumerable<LinkDto> CreateLinksForBands(BandsResourceParameters bandsResourceParameters, bool hasNext, bool hasPrevious)
+        {
+            var links = new List<LinkDto>();
+
+
+            links.Add(
+                new LinkDto(CreateBandsUri(bandsResourceParameters, UriType.Current),
+                "self",
+                "GET"));
+
+            if (hasNext)
+            {
+                links.Add(
+            new LinkDto(CreateBandsUri(bandsResourceParameters, UriType.NextPage),
+            "nextPage",
+            "GET"));
+            }
+            else if(hasPrevious)
+            {
+                links.Add(
+          new LinkDto(CreateBandsUri(bandsResourceParameters, UriType.PreviousPage),
+          "previousPage",
+          "GET"));
+            }
 
             return links;
         }
